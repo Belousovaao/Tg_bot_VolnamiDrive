@@ -38,6 +38,7 @@ ScaffoldingReadMe.txt
 *.snupkg
 
 # Others
+appsettings.json
 ~$*
 *~
 CodeCoverage/
