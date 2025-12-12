@@ -39,6 +39,9 @@ ScaffoldingReadMe.txt
 
 # Others
 appsettings.json
+appsettings.*.json
+Data/booking_data.json
+Data/*.json
 ~$*
 *~
 CodeCoverage/
