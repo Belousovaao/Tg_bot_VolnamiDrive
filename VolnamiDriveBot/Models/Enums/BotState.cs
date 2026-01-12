@@ -9,6 +9,12 @@ namespace VolnamiDriveBot.Models.Enums
     public enum BotState
     {
         Default,
-        AwaitingWishes
+        AwaitingWishes,
+        AwaitingPassportPhoto,
+        AwaitingPassportRegistration,
+        AwaitingDrivingLicenseFrontPhoto,
+        AwaitingDrivingLicenseBackPhoto,
+        AwaitingContactInfo,
+        AdminReplyingToUser
     }
 }

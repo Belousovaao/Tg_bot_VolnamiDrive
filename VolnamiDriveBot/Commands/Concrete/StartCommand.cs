@@ -18,11 +18,17 @@ namespace VolnamiDriveBot.Commands.Concrete
             _logger = logger;
             _keyboardService = keyboardService;
         }
+
+        /// <summary>
+        /// Отправляет стартовое меню выбора авто/мото
+        /// </summary>
+        /// <param name="message"> - входящее сообщение пользователя вида "/statrt"</param>
+        /// <param name="botClient"> - IBotClient индентификатор клиента</param>
+        /// <returns></returns>
         public async Task Execute(Message message, ITelegramBotClient botClient)
         {
             try
             {
-                _logger.LogInformation("Обработка команды /start для пользователя {UserId}", message.From.Id);
                 await botClient.SendPhoto(
                 message.Chat.Id,
                 InputFile.FromUri("https://freeimage.host/i/fB8dAas"),

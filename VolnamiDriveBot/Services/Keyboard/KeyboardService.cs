@@ -1,12 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Input;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using VolnamiDriveBot.Models.Domain;
 using VolnamiDriveBot.Services.VehicleService;
@@ -21,6 +13,7 @@ namespace VolnamiDriveBot.Services.Keyboard
         {
             _vehicleService = vehicleService;
         }
+
         public InlineKeyboardMarkup StartMenuKeyboard()
         {
             return new InlineKeyboardMarkup(new[]
@@ -53,13 +46,12 @@ namespace VolnamiDriveBot.Services.Keyboard
             return new InlineKeyboardMarkup(buttons);
         }
 
-        //клавиатура для каждого тс с кнопками посмотреть и рассчитать стоимость
         public InlineKeyboardMarkup GenerateVehicalOptionsMenu()
         {
-            
-            return new InlineKeyboardMarkup (new[] 
+
+            return new InlineKeyboardMarkup(new[]
             {
-                new[] 
+                new[]
                 {
                     InlineKeyboardButton.WithCallbackData("👀Подробнее", "more"),
                     InlineKeyboardButton.WithCallbackData("💰Рассчитать стоимость", "price")
@@ -70,13 +62,82 @@ namespace VolnamiDriveBot.Services.Keyboard
         public InlineKeyboardMarkup GenerateMoreMenu()
         {
             return new InlineKeyboardMarkup(new[]
-            { 
+            {
                 new[]
                 {
                     InlineKeyboardButton.WithCallbackData("Вернуться в начало", "go_back"),
                     InlineKeyboardButton.WithCallbackData("💰Рассчитать стоимость", "price")
                 }
             });
+        }
+
+        public InlineKeyboardMarkup GenerateAfterPriceMenu()
+        {
+            return new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Вернуться в начало", "go_back"),
+                    InlineKeyboardButton.WithCallbackData("✅ Перейти к бронированию", "go_booking")
+                }
+            });
+        }
+
+        public InlineKeyboardMarkup GetAdminMainMenu()
+        {
+            return new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("📊 Статистика", "admin_stats"),
+                    InlineKeyboardButton.WithCallbackData("📅 Бронирования", "admin_bookings")
+                },
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("🚗 Транспорт", "admin_vehicles"),
+                    InlineKeyboardButton.WithCallbackData("👥 Пользователи", "admin_users")
+                },
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("📢 Рассылка", "admin_broadcast"),
+                    InlineKeyboardButton.WithCallbackData("⚙️ Настройки", "admin_settings")
+                },
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("📈 Аналитика", "admin_analytics"),
+                    InlineKeyboardButton.WithCallbackData("🔐 Доступы", "admin_access")
+                }
+            });
+        }
+
+        public InlineKeyboardMarkup GetBackButton(string returnTo = "admin_main")
+        {
+            return new InlineKeyboardMarkup(new[]
+            {
+                new[] { InlineKeyboardButton.WithCallbackData("◀️ Назад", returnTo) }
+            });
+        }
+
+        public InlineKeyboardMarkup AdminAnswer(BookingRequest request)
+        {
+            var buttons = new List<InlineKeyboardButton[]>();
+
+            // Кнопки для связи если есть контакт
+            if (!string.IsNullOrEmpty(request.PhoneNumber))
+            {
+                buttons.Add(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("📞 Позвонить", $"admin_show_phone_{request.Id}")
+                });
+            }
+
+            // Другие кнопки
+            buttons.Add(new[]
+            {
+                InlineKeyboardButton.WithCallbackData("💬 Ответить", $"admin_reply_{request.Id}")
+            });
+
+            return new InlineKeyboardMarkup(buttons);
         }
     }
 }

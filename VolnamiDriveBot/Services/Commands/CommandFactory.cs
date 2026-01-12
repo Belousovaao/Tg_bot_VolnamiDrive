@@ -12,44 +12,26 @@ namespace VolnamiDriveBot.Services.Commands
         public CommandFactory(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
-            _commandRegistry = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
-            InitializeDefaultCommands();
-        }
-
-        private void InitializeDefaultCommands()
-        {
-            _commandRegistry["/start"] = typeof(StartCommand);
-            _commandRegistry["/help"] = typeof(HelpCommand);
-            _commandRegistry["/contact"] = typeof(ContactCommand);
-            _commandRegistry["go_back"] = typeof(StartCommand);
+            _commandRegistry = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
+            {
+                {"/start",  typeof(StartCommand)},
+                {"/help", typeof(HelpCommand)},
+                {"/contact",  typeof(ContactCommand)},
+                {"go_back",  typeof(StartCommand)}
+            };
         }
 
         public ICommand CreateCommand(string input, string userState)
         {
-            var cleanInput = input.Split(' ')[0].ToLower();
+            string cleanInput = input.Split(' ')[0].ToLower();
 
-            // Ищем команду в реестре
+            // Ищем команду в словаре
             if (_commandRegistry.TryGetValue(cleanInput, out var commandType))
             {
                 return (ICommand)_serviceProvider.GetRequiredService(commandType);
             }
 
             return null;
-        }
-
-        public void RegisterCommand(string key, Type commandType)
-        {
-            if (!typeof(ICommand).IsAssignableFrom(commandType))
-            {
-                throw new ArgumentException($"Тип {commandType.Name} должен реализовывать ICommand");
-            }
-
-            _commandRegistry[key] = commandType;
-        }
-
-        public bool IsCommandExists(string input)
-        {
-            return _commandRegistry.ContainsKey(input.Split(' ')[0].ToLower());
         }
     }
 }

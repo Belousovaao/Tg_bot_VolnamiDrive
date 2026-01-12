@@ -21,7 +21,6 @@ namespace VolnamiDriveBot.Services.StateManagement
         {
             return _userStates.GetOrAdd(userId, id =>
             {
-                _logger.LogDebug("🆕 Создано состояние для пользователя {UserId}", id);
                 return new UserState { UserId = id, StateEnum = BotState.Default};
             });
         }
@@ -29,26 +28,8 @@ namespace VolnamiDriveBot.Services.StateManagement
         public void SetUserState(long userId, BotState state)
         {
             UserState userState = GetUserState(userId);
-            BotState oldState = userState.StateEnum;
             userState.StateEnum = state;
             userState.LastActivity = DateTime.UtcNow;
-
-            _logger.LogDebug("🔄 Пользователь {UserId}: {OldState} -> {NewState}",userId, oldState, state);
-        }
-
-        void IUserStateManager.SetUserData(long userId, string key, object value)
-        {
-            UserState userState = GetUserState(userId);
-            userState.SetData(key, value);
-            _logger.LogDebug("💾 Сохранены данные для {UserId}: {Key} = {Value}", userId, key, value);
-        }
-
-        T IUserStateManager.GetUserData<T>(long userId, string key)
-        {
-            UserState userState = GetUserState(userId);
-            var value = userState.GetData<T>(key);
-            _logger.LogDebug("📖 Получены данные для {UserId}: {Key} = {Value}", userId, key, value);
-            return value;
         }
     }
 }

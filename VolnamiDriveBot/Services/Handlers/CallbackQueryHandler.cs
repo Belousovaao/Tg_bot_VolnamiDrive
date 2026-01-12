@@ -3,6 +3,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using VolnamiDriveBot.Commands;
 using VolnamiDriveBot.Models.Domain;
 using VolnamiDriveBot.Models.Enums;
 using VolnamiDriveBot.Services.BookingService;
@@ -11,7 +12,6 @@ using VolnamiDriveBot.Services.Commands;
 using VolnamiDriveBot.Services.Keyboard;
 using VolnamiDriveBot.Services.StateManagement;
 using VolnamiDriveBot.Services.VehicleService;
-using VolnamiDriveBot.Commands;
 
 namespace VolnamiDriveBot.Services.Handlers
 {
@@ -20,13 +20,13 @@ namespace VolnamiDriveBot.Services.Handlers
         private readonly IUserStateManager _stateManager;
         private readonly ICommandFactory _commandFactory;
         private readonly ILogger<CallbackQueryHandler> _logger;
-        private readonly Dictionary<long, BotSession> _botSessions = new();
         private readonly IKeyboardService _keyboardService;
         private readonly IVehicleService _vehicleService;
         private readonly ICalendarManager _calendarManager;
         private readonly IBookingService _bookingService;
+        private readonly AdminCallbackHandler _adminCallbackHandler;
 
-        public CallbackQueryHandler(IUserStateManager stateManager, ICommandFactory commandFactory, ILogger<CallbackQueryHandler> logger, IKeyboardService keyboardService, IVehicleService vehicleService, ICalendarManager calendarManager, IBookingService bookingService)
+        public CallbackQueryHandler(IUserStateManager stateManager, ICommandFactory commandFactory, ILogger<CallbackQueryHandler> logger, IKeyboardService keyboardService, IVehicleService vehicleService, ICalendarManager calendarManager, IBookingService bookingService, AdminCallbackHandler adminCallbackHandler)
         {
             _stateManager = stateManager;
             _commandFactory = commandFactory;
@@ -35,8 +35,17 @@ namespace VolnamiDriveBot.Services.Handlers
             _vehicleService = vehicleService;
             _calendarManager = calendarManager;
             _bookingService = bookingService;
+            _adminCallbackHandler = adminCallbackHandler;
         }
 
+
+        /// <summary>
+        /// Обработчик кликов на кнопки в боте
+        /// </summary>
+        /// <param name="botClient"></param>
+        /// <param name="callbackQuery"></param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
         public async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken ct)
         {
             try
@@ -50,10 +59,7 @@ namespace VolnamiDriveBot.Services.Handlers
 
                 await botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: ct);
 
-                if (!_botSessions.ContainsKey(userId))
-                    _botSessions[userId] = new BotSession();
-
-                BotSession session = _botSessions[userId];
+                BotSession session = SessionManager.GetORCreateSession(userId);
 
                 // Обработка разных типов callback данных
                 string text = string.Empty;
@@ -63,6 +69,11 @@ namespace VolnamiDriveBot.Services.Handlers
                 {
                     await HandleCalendarAction(botClient, callbackQuery, session, ct);
                     return;
+                }
+                
+                if (callbackData.StartsWith("admin_"))
+                {
+                    await _adminCallbackHandler.HandleCallbackAsync(botClient, callbackQuery, ct);
                 }
 
                 switch (callbackData)
@@ -101,6 +112,10 @@ namespace VolnamiDriveBot.Services.Handlers
                             await startCommand.Execute(callbackQuery.Message, botClient);
                         }
                         return;
+
+                    case "go_booking":
+                        await HandleBooking(botClient, callbackQuery, ct);
+                        break;
 
 
                     default:
@@ -145,11 +160,7 @@ namespace VolnamiDriveBot.Services.Handlers
 
                 if (data.Contains("cal_reset"))
                 {
-                    if (_botSessions.ContainsKey(id))
-                    {
-                        session = _botSessions[id];
-                        session.SetSessionData("RentalStartDate", DateTime.MinValue);
-                    }
+                    session.SetSessionData("RentalStartDate", DateTime.MinValue);
                     await botClient.SendMessage(id, "🔄 Выбор сброшен");
                     await ShowCalendarForStartDate(botClient, callbackQuery, session, DateTime.Now.Year, DateTime.Now.Month, ct);
                     return;
@@ -161,24 +172,27 @@ namespace VolnamiDriveBot.Services.Handlers
                     {
                         DateTime startDate = DateTime.Today;
                         session.SetSessionData("RentalStartDate", startDate);
-                        await ShowCalendarForEndDate(botClient, callbackQuery, session, DateTime.Now.Year, DateTime.Now.Month, startDate, ct);
+                        int year = startDate.Year;
+                        int month = startDate.Month;
+                        await ShowCalendarForEndDate(botClient, callbackQuery, session, year, month, startDate, ct);
                     }
                     else
                     {
                         DateTime endDate = DateTime.Today;
                         DateTime startDate = session.GetSessionData<DateTime>("RentalStartDate");
                         await ConfirmRental(botClient, callbackQuery, session, startDate, endDate, ct);
-                        _botSessions.Remove(id);
                     }
                 }
                 else if (data.StartsWith("cal_start_"))
                 {
                     // Пользователь выбрал дату начала 
                     string dateStr = data.Replace("cal_start_", "");
-                    if (DateTime.TryParse(dateStr, out var startDate))
+                    if (DateTime.TryParse(dateStr, out DateTime startDate))
                     {
                         session.SetSessionData("RentalStartDate", startDate);
-                        await ShowCalendarForEndDate(botClient, callbackQuery, session, DateTime.Now.Year, DateTime.Now.Month, startDate, ct);
+                        int year = startDate.Year;
+                        int month = startDate.Month;
+                        await ShowCalendarForEndDate(botClient, callbackQuery, session, year, month, startDate, ct);
                     }
                 }
                 else if (data.StartsWith("cal_end_"))
@@ -190,7 +204,6 @@ namespace VolnamiDriveBot.Services.Handlers
                         DateTime startDate = session.GetSessionData<DateTime>("RentalStartDate");
                         session.SetSessionData("RentalEndDate", endDate);
                         await ConfirmRental(botClient, callbackQuery, session, startDate, endDate, ct);
-                        _botSessions.Remove(id);
                     }
                 }
                 else if (data.StartsWith("cal_prev_") || data.StartsWith("cal_next_"))
@@ -288,16 +301,65 @@ namespace VolnamiDriveBot.Services.Handlers
 
                 await botClient.SendMessage(callbackQuery.Message!.Chat.Id,
                     $"🎉 <b>Рассчет стоимости:</b>\n\n" +
+                    $"🚗 ТС: {vehicle.Name}\n" +
                     $"📅 <b>Период аренды:</b>\n" +
                     $"🟢 Начало: {startDate:dd MMMM yyyy}\n" +
                     $"🔴 Окончание: {endDate:dd MMMM yyyy}\n" +
                     $"⏱️ <b>Продолжительность:</b> {durationText}\n" +
                     $"💎 <b>Стоимость:</b> {totalPrice}₽\n\n" +
-                    $"Залог: {vehicle.PawnPrice}₽\n\n" +
-                    $"Для подтверждения бронирования свяжитесь с нами:\n" +
-                    $"📞 Телефон: +7 (963) 565-28-17\n",
-                    ParseMode.Html);
+                    $"Залог: {vehicle.PawnPrice}₽",
+                    ParseMode.Html,
+                    replyMarkup: _keyboardService.GenerateAfterPriceMenu());
             }
+
+            async Task HandleBooking(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken ct)
+            {
+                long userId = callbackQuery.From.Id;
+                BotSession session = SessionManager.GetORCreateSession(userId);
+                string vehicleId = session.GetSessionData<string>("SelectedVehicleId");
+                Vehicle vehicle = _vehicleService.GetVehicle(vehicleId);
+                DateTime startDate = session.GetSessionData<DateTime>("RentalStartDate");
+                DateTime endDate = session.GetSessionData<DateTime>("RentalEndDate");
+
+                // Сохраняем данные для заявки в сессии
+                session.SetSessionData("BookingVehicle", vehicle);
+                session.SetSessionData("BookingStartDate", startDate);
+                session.SetSessionData("BookingEndDate", endDate);
+
+                string userName = $"{callbackQuery.From.FirstName} {callbackQuery.From.LastName}".Trim();
+                int days = (endDate - startDate).Days;
+                int totalPrice = days * vehicle.DailyPrice;
+
+                //Создаем предварительную заявку
+                BookingRequest bookingRequest = await _bookingService.CreateBookingRequest(userId, userName,
+                    vehicle.Id, vehicle.Name, startDate, endDate, totalPrice, vehicle.PawnPrice);
+
+                // Сохраняем ID заявки в сессии
+                session.SetSessionData("CurrentBookingRequestId", bookingRequest.Id);
+
+                // Просим отправить фото паспорта
+                await botClient.SendMessage(
+                    callbackQuery.Message.Chat.Id,
+                    "📝 <b>Для составления договора аренды мне потребуются ваши данные</b>\n\n" +
+                    "Отправьте, пожалуйста, фото/скан вашего паспорта:\n" +
+                    "• Разворот с фото (страницы 2-3)\n\n\n" +
+                    "🔒 <b>Важная информация о конфиденциальности</b>\n\n" +
+                    "Мы серьезно относимся к защите ваших персональных данных:\n\n" +
+                    "✅ <b>Данные используются только для:</b>\n" +
+                    "• Проверки вашей личности\n" +
+                    "• Составления договора аренды\n\n" +
+                    "❌ <b>Данные НЕ используются для:</b>\n" +
+                    "• Передачи третьим лицам\n" +
+                    "• Рассылок или рекламы\n" +
+                    "• Других целей без вашего согласия\n\n" +
+                    "📝 <b>Все в соответствии с 152-ФЗ «О персональных данных»</b>",
+                    ParseMode.Html,
+                    cancellationToken: ct);
+
+                _stateManager.SetUserState(userId, BotState.AwaitingPassportPhoto);
+            }
+
+
         }
     }
 }

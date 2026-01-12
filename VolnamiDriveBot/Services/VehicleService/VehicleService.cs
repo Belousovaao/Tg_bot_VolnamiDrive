@@ -9,6 +9,7 @@ namespace VolnamiDriveBot.Services.VehicleService
 {
     public class VehicleService : IVehicleService
     {
+
         private readonly Dictionary<string, Vehicle> _vehicles = new()
         {
             { "lexus570", new Vehicle {
@@ -19,7 +20,7 @@ namespace VolnamiDriveBot.Services.VehicleService
                 Type = "auto",
                 DailyPrice = 18000,
                 PawnPrice = 30000,
-                                FullDescription = @"<b>Основные характеристики:</b>
+                FullDescription = @"<b>Основные характеристики:</b>
 <pre>Раб. объем двиг., см³│ 5 663
 Тип двигателя        │ Бенз., V8
 Максимальная мощность│ 367 л.с.
@@ -72,7 +73,7 @@ namespace VolnamiDriveBot.Services.VehicleService
                 FullDescription = @"<b>Основные характеристики:</b>
 <pre>Раб. объем двиг., см³│ 1 499
 Тип двигателя        │ Бенз., 4-х цилиндр.
-Максимальная мощность│ 147 л.с.
+Максимальная мощность│ 174 л.с.
 Коробка передач      │ 7DCT
 Тип привода          │ передний (2WD)
 Передняя подвеска    │ Независимая Макферсон

@@ -6,6 +6,7 @@ using Telegram.Bot;
 using Telegram.Bot.Polling;
 using VolnamiDriveBot.Commands.Concrete;
 using VolnamiDriveBot.Configuration;
+using VolnamiDriveBot.Services.Admin;
 using VolnamiDriveBot.Services.BookingService;
 using VolnamiDriveBot.Services.Calendar;
 using VolnamiDriveBot.Services.Commands;
@@ -65,6 +66,7 @@ internal class Program
         //Регистрация обработчиков
         services.AddSingleton<MessageHandler>();
         services.AddSingleton <CallbackQueryHandler>();
+        services.AddSingleton<AdminCallbackHandler>();
 
         // Регистрация сервисов
         services.AddSingleton<IBotService, BotService>();
@@ -75,6 +77,7 @@ internal class Program
         services.AddSingleton<ICalendarManager, CalendarManager>();
         services.AddSingleton <IKeyboardService, KeyboardService>();
         services.AddSingleton <IVehicleService, VehicleService>();
+        services.AddSingleton<IAdminService, AdminService>();
 
 
         // Регистрация команд

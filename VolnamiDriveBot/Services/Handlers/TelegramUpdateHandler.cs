@@ -20,10 +20,15 @@ namespace VolnamiDriveBot.Services.Handlers
             _callbackQueryHandler = callbackQueryHandler;
         }
 
+        /// <summary>
+        /// Получает обновление от ботклиента и определяет тип обновления: текстовое сообщение или клик по кнопке
+        /// </summary>
+        /// <param name="botClient"></param>
+        /// <param name="update"></param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
         public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken ct)
         {
-            _logger.LogDebug("📨 Получено обновление: {UpdateType}", update.Type);
-
             try
             {
                 switch(update.Type)
